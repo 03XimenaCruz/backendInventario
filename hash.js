@@ -1,0 +1,10 @@
+// hash.js
+const bcrypt = require("bcrypt");
+
+async function generarHash() {
+  const hash = await bcrypt.hash("admin123", 10);
+  console.log("HASH GENERADO:");
+  console.log(hash);
+}
+
+generarHash();
