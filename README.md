@@ -24,25 +24,25 @@ backend/
 
 ## Instalación y Configuración
 
-### Clonar el repositorio
+### 1. Clonar el repositorio
 
 #### git clone https://github.com/usuario/tu-repo.git
 
-### Entrar al proyecto
+### 2. Entrar al proyecto
 #### cd nombre-proyecto
 
-### Instalar dependencias
-#### npm install
+### 3. Instalar dependencias
+#### `npm install`
 
-### Crear archivo .env
+### 4. Crear archivo .env
 #### DB_HOST=localhost
 #### DB_USER=root
 #### DB_PASSWORD=tu_password
 #### DB_NAME=tu_bd
 #### PORT=3000
 
-### Ejecutar proyecto
+### 5. Ejecutar proyecto
 
-#### npm run dev (desarrollo)
-#### npm start (producción)
+#### `npm run dev` (desarrollo)
+#### `npm start` (producción)
 
