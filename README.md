@@ -5,19 +5,14 @@
 backend/
 ├── config/
 │   └── db.js
-│
 ├── controllers/
 │   └──Controladores de la API
-│
 ├── middleware/
 │   └── Autenticación
-│
 ├── routes/
 │   └── Rutas de la API
-│
 ├── utils/
 │   └── Funciones auxiliares
-│
 ├── .env
 └── server.js
 ```
@@ -28,7 +23,7 @@ backend/
 
 ### 1. Clonar el repositorio
 ```bash
-#### git clone https://github.com/usuario/tu-repo.git
+git clone https://github.com/usuario/tu-repo.git
 ```
 
 ### 2. Entrar al proyecto
