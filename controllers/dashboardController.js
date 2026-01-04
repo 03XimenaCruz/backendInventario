@@ -13,8 +13,8 @@ exports.getDashboardStats = async (req, res) => {
     // Total de usuarios
     const [totalUsers] = await db.query('CALL sp_count_total_users()');
     
-    // Productos con más entradas del mes
-    const [topEntriesMonth] = await db.query('CALL sp_get_top_entries_month()');
+    // Productos con más salidas del mes
+    const [topExitsMonth] = await db.query('CALL sp_get_top_exits_month()');
     
     // Productos con menos salidas del mes
     const [lowExitsMonth] = await db.query('CALL sp_get_low_exits_month()');
@@ -26,7 +26,7 @@ exports.getDashboardStats = async (req, res) => {
       totalProducts: totalProducts[0][0].total,
       lowStockProducts: lowStockProducts[0][0].total,
       totalUsers: totalUsers[0][0].total,
-      topEntriesMonth: topEntriesMonth[0],
+      topExitsMonth: topExitsMonth[0],
       lowExitsMonth: lowExitsMonth[0],
       lowStockAlerts: lowStockAlerts[0]
     });

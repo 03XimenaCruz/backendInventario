@@ -1,75 +1,117 @@
 const PDFDocument = require('pdfkit');
 
+// Función auxiliar para dibujar tabla con bordes
+const drawTableCell = (doc, text, x, y, width, height, align = 'center', isHeader = false) => {
+  // Dibujar borde de celda
+  doc.rect(x, y, width, height).stroke();
+  
+  // Fondo de color para headers
+  if (isHeader) {
+    doc.save();
+    doc.rect(x, y, width, height).fill('#10598A');
+    doc.restore();
+    doc.rect(x, y, width, height).stroke();
+  }
+  
+  // Calcular posición del texto centrado
+  const textY = y + (height - 10) / 2;
+  
+  // Color de texto blanco para headers
+  if (isHeader) {
+    doc.fillColor('white');
+  }
+  
+  doc.text(text, x + 2, textY, {
+    width: width - 4,
+    align: align,
+    lineBreak: false
+  });
+  
+  // Restaurar color negro
+  if (isHeader) {
+    doc.fillColor('black');
+  }
+};
+
 // Generar PDF de inventario
 const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
+  // Limpiar título (reemplazar guiones bajos y guiones por espacios, eliminar números al final)
+  const cleanTitle = title.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\s+\d+$/, '').trim();
+
   // Configurar headers para descarga
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${title.replace(/\s+/g, ' ')}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${title}.pdf"`);
 
   doc.pipe(res);
 
   // Título
-  doc.fontSize(20).font('Times-Roman').text(title, { align: 'center' });
+  doc.fontSize(20).font('Times-Roman').text(cleanTitle, { align: 'center' });
   doc.moveDown();
   doc.fontSize(10).font('Times-Italic').text(`Fecha: ${new Date().toLocaleString('es-MX')}`, { align: 'right' });
   doc.moveDown(2);
 
-  // Tabla de datos
+  // Configuración de tabla
   const tableTop = 150;
-  const itemHeight = 20;
-  const columnWidths = [50, 100, 130, 100, 60, 60];
-  const startX = 30;
-
-  // Headers
-  doc.fontSize(9).font('Times-Roman');
-  let xPos = startX;
+  const rowHeight = 25;
+  const columnWidths = [60, 120, 100, 100, 60, 60];
+  const tableWidth = columnWidths.reduce((a, b) => a + b, 0);
+  const pageWidth = doc.page.width;
+  const startX = (pageWidth - tableWidth) / 2; // Centrar tabla
   const headers = ['SKU', 'Nombre', 'Categoría', 'Almacén', 'Stock', 'Status'];
-  
+
+  // Dibujar headers
+  doc.fontSize(10).font('Times-Roman');
+  let xPos = startX;
   headers.forEach((header, i) => {
-    doc.text(header, xPos, tableTop, { width: columnWidths[i], align: 'left' });
+    drawTableCell(doc, header, xPos, tableTop, columnWidths[i], rowHeight, 'center', true);
     xPos += columnWidths[i];
   });
 
-  // Línea debajo de headers
-  doc.moveTo(startX, tableTop + 15)
-     .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), tableTop + 15)
-     .stroke();
+  // Dibujar datos
+  doc.fontSize(9).font('Times-Italic');
+  let yPos = tableTop + rowHeight;
 
-  // Datos
-  doc.fontSize(8).font('Times-Italic');
-  let yPos = tableTop + 20;
-
-  data.forEach((item, index) => {
+  data.forEach((item) => {
     // Verificar si necesitamos nueva página
-    if (yPos > 750) {
+    if (yPos > 720) {
       doc.addPage();
       yPos = 50;
+      
+      // Redibujar headers en nueva página
+      doc.fontSize(10).font('Times-Roman');
+      xPos = startX;
+      headers.forEach((header, i) => {
+        drawTableCell(doc, header, xPos, yPos, columnWidths[i], rowHeight, 'center', true);
+        xPos += columnWidths[i];
+      });
+      yPos += rowHeight;
+      doc.fontSize(9).font('Times-Italic');
     }
 
     xPos = startX;
     const values = [
       item.sku || '',
-      (item.nombre || '').substring(0, 25),
-      (item.categoria || '').substring(0, 20),
-      (item.almacen || '').substring(0, 18),
+      (item.nombre || '').substring(0, 20),
+      (item.categoria || '').substring(0, 15),
+      (item.almacen || '').substring(0, 15),
       item.stock?.toString() || '0',
       item.status || ''
     ];
 
     values.forEach((value, i) => {
-      doc.text(value, xPos, yPos, { width: columnWidths[i], align: 'left' });
+      drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
       xPos += columnWidths[i];
     });
 
-    yPos += itemHeight;
+    yPos += rowHeight;
   });
 
   // Total de productos
   doc.moveDown(2);
-  doc.fontSize(10).font('Times-Roman')
-     .text(`Total de productos: ${data.length}`, startX, yPos + 20 ,{ align: 'right' });
+  doc.fontSize(11).font('Times-Roman')
+     .text(`Total de productos: ${data.length}`, startX, yPos + 10, { align: 'right' });
 
   doc.end();
 };
@@ -78,45 +120,55 @@ const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
 const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
 
+  // Limpiar título (reemplazar guiones bajos y guiones por espacios, eliminar números al final)
+  const cleanTitle = title.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\s+\d+$/, '').trim();
+
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${title.replace(/\s+/g, '_')}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${title}.pdf"`);
 
   doc.pipe(res);
 
   // Título
-  doc.fontSize(20).font('Times-Roman').text(title, { align: 'center' });
+  doc.fontSize(20).font('Times-Roman').text(cleanTitle, { align: 'center' });
   doc.moveDown();
   doc.fontSize(10).font('Times-Italic').text(`Fecha: ${new Date().toLocaleString('es-MX')}`, { align: 'right' });
   doc.moveDown(2);
 
-  // Tabla
+  // Configuración de tabla
   const tableTop = 120;
-  const itemHeight = 20;
-  const columnWidths = [40, 60, 120, 80, 60, 60, 60, 100, 100];
-  const startX = 30;
+  const rowHeight = 25;
+  const columnWidths = [35, 60, 110, 80, 50, 55, 55, 95, 85];
+  const tableWidth = columnWidths.reduce((a, b) => a + b, 0);
+  const pageWidth = doc.page.width;
+  const startX = (pageWidth - tableWidth) / 2; // Centrar tabla
+  const headers = ['ID', 'Tipo', 'Producto', 'Almacén', 'Cant.', 'St.Ant.', 'St.Act.', 'Usuario', 'Fecha'];
 
   // Headers
-  doc.fontSize(8).font('Times-Roman');
+  doc.fontSize(9).font('Times-Roman');
   let xPos = startX;
-  const headers = ['ID', 'Tipo', 'Producto', 'Almacén', 'Cant.', 'St.Ant.', 'St.Act.', 'Usuario', 'Fecha'];
-  
   headers.forEach((header, i) => {
-    doc.text(header, xPos, tableTop, { width: columnWidths[i], align: 'right' });
+    drawTableCell(doc, header, xPos, tableTop, columnWidths[i], rowHeight, 'center', true);
     xPos += columnWidths[i];
   });
 
-  doc.moveTo(startX, tableTop + 15)
-     .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), tableTop + 15)
-     .stroke();
-
   // Datos
-  doc.fontSize(7).font('Times-Italic');
-  let yPos = tableTop + 20;
+  doc.fontSize(8).font('Times-Italic');
+  let yPos = tableTop + rowHeight;
 
   data.forEach((item) => {
-    if (yPos > 530) {
+    if (yPos > 500) {
       doc.addPage();
       yPos = 50;
+      
+      // Redibujar headers
+      doc.fontSize(9).font('Times-Roman');
+      xPos = startX;
+      headers.forEach((header, i) => {
+        drawTableCell(doc, header, xPos, yPos, columnWidths[i], rowHeight, 'center', true);
+        xPos += columnWidths[i];
+      });
+      yPos += rowHeight;
+      doc.fontSize(8).font('Times-Italic');
     }
 
     xPos = startX;
@@ -124,12 +176,12 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
     const values = [
       item.id?.toString() || '',
       item.tipo_movimiento === 'entrada' ? 'ENTRADA' : 'SALIDA',
-      (item.producto || '').substring(0, 25),
-      (item.almacen || '').substring(0, 15),
+      (item.producto || '').substring(0, 18),
+      (item.almacen || '').substring(0, 13),
       item.cantidad?.toString() || '',
       item.stock_anterior?.toString() || '',
       item.stock_actual?.toString() || '',
-      (item.usuario || '').substring(0, 20),
+      (item.usuario || '').substring(0, 15),
       fecha
     ];
 
@@ -137,20 +189,19 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
       // Color para tipo de movimiento
       if (i === 1) {
         doc.fillColor(item.tipo_movimiento === 'entrada' ? 'green' : 'red');
-      } else {
+        drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
         doc.fillColor('black');
+      } else {
+        drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
       }
-      
-      doc.text(value, xPos, yPos, { width: columnWidths[i], align: 'left' });
       xPos += columnWidths[i];
     });
 
-    yPos += itemHeight;
+    yPos += rowHeight;
   });
 
-  doc.fillColor('black');
-  doc.fontSize(9).font('Times-Roman')
-     .text(`Total de movimientos: ${data.length}`, startX, yPos + 20, { align: 'right'});
+  doc.fontSize(10).font('Times-Roman')
+     .text(`Total de movimientos: ${data.length}`, startX, yPos + 10, { align: 'right' });
 
   doc.end();
 };
@@ -159,53 +210,64 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
 const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
+  // Limpiar título (reemplazar guiones bajos y guiones por espacios, eliminar números al final)
+  const cleanTitle = title.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\s+\d+$/, '').trim();
+
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${title.replace(/\s+/g, ' ')}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${title}.pdf"`);
 
   doc.pipe(res);
 
   // Título con alerta
-  doc.fontSize(20).font('Times-Roman').fillColor('red').text(title, { align: 'center' });
+  doc.fontSize(20).font('Times-Roman').fillColor('red').text(cleanTitle, { align: 'center' });
   doc.fillColor('black');
   doc.moveDown();
   doc.fontSize(10).font('Times-Italic').text(`Fecha: ${new Date().toLocaleString('es-MX')}`, { align: 'right' });
   doc.moveDown(2);
 
+  // Configuración de tabla
   const tableTop = 150;
-  const itemHeight = 22;
-  const columnWidths = [50, 130, 100, 100, 50, 60];
-  const startX = 30;
+  const rowHeight = 25;
+  const columnWidths = [60, 140, 100, 100, 50, 50];
+  const tableWidth = columnWidths.reduce((a, b) => a + b, 0);
+  const pageWidth = doc.page.width;
+  const startX = (pageWidth - tableWidth) / 2; // Centrar tabla
+  const headers = ['SKU', 'Nombre', 'Categoría', 'Almacén', 'Stock', 'Mín'];
 
   // Headers
-  doc.fontSize(9).font('Times-Roman');
+  doc.fontSize(10).font('Times-Roman');
   let xPos = startX;
-  const headers = ['SKU', 'Nombre', 'Categoría', 'Almacén', 'Stock', 'Mín'];
-  
   headers.forEach((header, i) => {
-    doc.text(header, xPos, tableTop, { width: columnWidths[i], align: 'left' });
+    drawTableCell(doc, header, xPos, tableTop, columnWidths[i], rowHeight, 'center', true);
     xPos += columnWidths[i];
   });
 
-  doc.moveTo(startX, tableTop + 15)
-     .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), tableTop + 15)
-     .stroke();
-
   // Datos
-  doc.fontSize(8).font('Times-Italic');
-  let yPos = tableTop + 20;
+  doc.fontSize(9).font('Times-Italic');
+  let yPos = tableTop + rowHeight;
 
   data.forEach((item) => {
-    if (yPos > 750) {
+    if (yPos > 720) {
       doc.addPage();
       yPos = 50;
+      
+      // Redibujar headers
+      doc.fontSize(10).font('Times-Roman');
+      xPos = startX;
+      headers.forEach((header, i) => {
+        drawTableCell(doc, header, xPos, yPos, columnWidths[i], rowHeight, 'center', true);
+        xPos += columnWidths[i];
+      });
+      yPos += rowHeight;
+      doc.fontSize(9).font('Times-Roman');
     }
 
     xPos = startX;
     const values = [
       item.sku || '',
-      (item.nombre || '').substring(0, 28),
-      (item.categoria || '').substring(0, 18),
-      (item.almacen || '').substring(0, 18),
+      (item.nombre || '').substring(0, 22),
+      (item.categoria || '').substring(0, 15),
+      (item.almacen || '').substring(0, 15),
       item.stock?.toString() || '0',
       item.stock_minimo?.toString() || '0'
     ];
@@ -214,21 +276,23 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
       // Resaltar stock en rojo si es crítico
       if (i === 4 && parseInt(item.stock) === 0) {
         doc.fillColor('red').font('Times-Roman');
+        drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
+        doc.fillColor('black').font('Times-Roman');
       } else if (i === 4 && parseInt(item.stock) <= parseInt(item.stock_minimo)) {
-        doc.fillColor('orange');
+        doc.fillColor('orange').font('Times-Roman');
+        drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
+        doc.fillColor('black').font('Times-Roman');
       } else {
-        doc.fillColor('black').font('Times-Italic');
+        drawTableCell(doc, value, xPos, yPos, columnWidths[i], rowHeight, 'center', false);
       }
-      
-      doc.text(value, xPos, yPos, { width: columnWidths[i], align: 'left' });
       xPos += columnWidths[i];
     });
 
-    yPos += itemHeight;
+    yPos += rowHeight;
   });
 
-  doc.fillColor('black').font('Times-Roman').fontSize(10)
-     .text(`Total de productos con stock bajo: ${data.length}`, startX, yPos + 20,{ align: 'right'});
+  doc.fillColor('black').font('Times-Roman').fontSize(11)
+     .text(`Total de productos con stock bajo: ${data.length}`, startX, yPos + 10, { align: 'right' });
 
   doc.end();
 };
