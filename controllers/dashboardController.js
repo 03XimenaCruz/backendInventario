@@ -4,22 +4,11 @@ const { generateInventoryPDF, generateMovementsPDF, generateLowStockPDF } = requ
 // Obtener estadísticas del dashboard
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Total de productos
     const [totalProducts] = await db.query('CALL sp_count_total_products()');
-    
-    // Productos con stock bajo
     const [lowStockProducts] = await db.query('CALL sp_count_low_stock_products()');
-    
-    // Total de usuarios
     const [totalUsers] = await db.query('CALL sp_count_total_users()');
-    
-    // Productos con más salidas del mes
     const [topExitsMonth] = await db.query('CALL sp_get_top_exits_month()');
-    
-    // Productos con menos salidas del mes
     const [lowExitsMonth] = await db.query('CALL sp_get_low_exits_month()');
-    
-    // Alertas de stock bajo
     const [lowStockAlerts] = await db.query('CALL sp_get_low_stock_alerts()');
     
     res.json({
@@ -36,23 +25,70 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-// Generar reporte de inventario por mes
+// NUEVO: Obtener almacenes activos
+exports.getActiveWarehouses = async (req, res) => {
+  try {
+    const [warehouses] = await db.query('CALL sp_get_all_warehouses()');
+    res.json(warehouses[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al obtener almacenes' });
+  }
+};
+
+// NUEVO: Obtener fecha del primer registro (producto o movimiento)
+exports.getFirstRecordDate = async (req, res) => {
+  try {
+    const [result] = await db.query(`
+      SELECT MIN(fecha_minima) as first_date FROM (
+        SELECT MIN(created_at) as fecha_minima FROM producto WHERE activo = 1
+        UNION ALL
+        SELECT MIN(created_at) as fecha_minima FROM movimiento
+      ) as fechas
+    `);
+    
+    res.json({ 
+      firstDate: result[0].first_date,
+      year: result[0].first_date ? new Date(result[0].first_date).getFullYear() : new Date().getFullYear(),
+      month: result[0].first_date ? new Date(result[0].first_date).getMonth() + 1 : new Date().getMonth() + 1
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al obtener fecha inicial' });
+  }
+};
+
+// Generar reporte de inventario por mes (con filtro de almacén)
 exports.getInventoryReportByMonth = async (req, res) => {
   try {
-    const { year, month, format } = req.query;
+    const { year, month, format, warehouse_id } = req.query;
     
+    // Validar que haya datos en ese mes
+    const [hasData] = await db.query(`
+      SELECT COUNT(*) as count FROM producto 
+      WHERE activo = 1 
+      AND YEAR(created_at) <= ? 
+      AND (YEAR(created_at) < ? OR MONTH(created_at) <= ?)
+      ${warehouse_id ? 'AND warehouse_id = ?' : ''}
+    `, warehouse_id ? [year, year, month, warehouse_id] : [year, year, month]);
+    
+    if (hasData[0].count === 0) {
+      return res.status(400).json({ 
+        message: 'No hay datos disponibles para el período seleccionado' 
+      });
+    }
+    
+    // Llamar al procedimiento almacenado con warehouse_id
     const [products] = await db.query(
-      'CALL sp_get_inventory_report_by_month(?, ?)',
-      [year || null, month || null]
+      'CALL sp_get_inventory_report_by_month(?, ?, ?)',
+      [year || null, month || null, warehouse_id || null]
     );
     
-    // Si el formato es PDF, generar PDF
     if (format === 'pdf') {
-      const title = `Reporte_Inventario_${year}_${month}`;
+      const title = `Reporte_Inventario_${year}_${month}${warehouse_id ? '_Almacen_' + warehouse_id : ''}`;
       return generateInventoryPDF(products[0], res, title);
     }
     
-    // Por defecto, retornar JSON para CSV
     res.json(products[0]);
   } catch (error) {
     console.error(error);
@@ -60,14 +96,22 @@ exports.getInventoryReportByMonth = async (req, res) => {
   }
 };
 
-// Reporte de productos con bajo stock
+// Reporte de productos con bajo stock (con filtro de almacén)
 exports.getLowStockReport = async (req, res) => {
   try {
-    const { format } = req.query;
+    const { format, warehouse_id } = req.query;
     
-    const [products] = await db.query('CALL sp_get_low_stock_report()');
+    const [products] = await db.query(
+      'CALL sp_get_low_stock_report(?)',
+      [warehouse_id || null]
+    );
     
-    // Si el formato es PDF, generar PDF
+    if (products[0].length === 0) {
+      return res.status(400).json({ 
+        message: 'No hay productos con stock bajo en este almacén' 
+      });
+    }
+    
     if (format === 'pdf') {
       return generateLowStockPDF(products[0], res, 'Reporte_Stock_Bajo');
     }
@@ -79,23 +123,36 @@ exports.getLowStockReport = async (req, res) => {
   }
 };
 
-// Reporte de movimientos del mes
+// Reporte de movimientos del mes (con filtro de almacén)
 exports.getMovementsReportByMonth = async (req, res) => {
   try {
-    const { year, month, format } = req.query;
+    const { year, month, format, warehouse_id } = req.query;
     
     if (!year || !month) {
       return res.status(400).json({ message: 'Año y mes son requeridos' });
     }
     
+    // Validar que haya movimientos en ese mes
+    const [hasMovements] = await db.query(`
+      SELECT COUNT(*) as count FROM movimiento 
+      WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
+      ${warehouse_id ? 'AND warehouse_id = ?' : ''}
+    `, warehouse_id ? [year, month, warehouse_id] : [year, month]);
+    
+    if (hasMovements[0].count === 0) {
+      return res.status(400).json({ 
+        message: 'No hay movimientos registrados en el período seleccionado' 
+      });
+    }
+    
     const [movements] = await db.query(
-      'CALL sp_get_movements_report_by_month(?, ?)',
-      [parseInt(year), parseInt(month)]
+      'CALL sp_get_movements_report_by_month(?, ?, ?)',
+      [parseInt(year), parseInt(month), warehouse_id || null]
     );
     
-    // Si el formato es PDF, generar PDF
     if (format === 'pdf') {
-      const title = `Reporte_Movimientos_${year}_${month}`;
+       let warehouseName = 'Todos los almacenes';
+      const title = `Reporte_Movimientos_${year}_${month}${warehouse_id ? '_Almacen_' + warehouse_id : ''}`;
       return generateMovementsPDF(movements[0], res, title);
     }
     

@@ -3,18 +3,19 @@ const db = require('../config/db');
 // Obtener todos los productos
 exports.getAllProducts = async (req, res) => {
   try {
-    const { warehouse_id, search } = req.query;
+    const { warehouse_id, search, category_id } = req.query;
     
     let result;
     
-    if (warehouse_id) {
+    if (category_id) {
+      [result] = await db.query('CALL sp_get_products_by_category(?)', [category_id]);
+    } else if (warehouse_id) {
       [result] = await db.query('CALL sp_get_products_by_warehouse(?)', [warehouse_id]);
     } else if (search) {
       [result] = await db.query('CALL sp_search_products_by_name(?)', [search]);
     } else {
       [result] = await db.query('CALL sp_get_all_products()');
     }
-    
     res.json(result[0]);
   } catch (error) {
     console.error(error);

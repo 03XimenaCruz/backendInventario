@@ -15,18 +15,18 @@ async function createAdmin() {
   console.log('Hash generado:', hash);
   
   // Eliminar admin anterior si existe
-  await connection.query('DELETE FROM usuario WHERE correo = ?', ['admin@sistema.com']);
+  await connection.query('DELETE FROM usuario WHERE correo = ?', ['administrador@sistema.com']);
   
   // Insertar nuevo admin
   await connection.query(
     'INSERT INTO usuario (nombre, correo, contrasenia, rol) VALUES (?, ?, ?, ?)',
-    ['Administrador', 'admin@sistema.com', hash, 'administrador']
+    ['Administrador', 'administrador@sistema.com', hash, 'administrador']
   );
   
   console.log('✅ Administrador creado exitosamente');
   
   // Verificar
-  const [users] = await connection.query('SELECT * FROM usuario WHERE correo = ?', ['admin@sistema.com']);
+  const [users] = await connection.query('SELECT * FROM usuario WHERE correo = ?', ['administrador@sistema.com']);
   console.log('Usuario creado:', users[0]);
   
   await connection.end();

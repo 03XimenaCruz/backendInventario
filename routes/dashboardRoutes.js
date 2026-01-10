@@ -9,6 +9,12 @@ router.use(verifyToken);
 // GET /api/dashboard/stats - Obtener estadísticas
 router.get('/stats', dashboardController.getDashboardStats);
 
+// NUEVO: GET /api/dashboard/warehouses - Obtener almacenes activos
+router.get('/warehouses', dashboardController.getActiveWarehouses);
+
+// NUEVO: GET /api/dashboard/first-record-date - Fecha del primer registro
+router.get('/first-record-date', dashboardController.getFirstRecordDate);
+
 // GET /api/dashboard/inventory-report-month - Reporte de inventario por mes
 router.get('/inventory-report-month', dashboardController.getInventoryReportByMonth);
 

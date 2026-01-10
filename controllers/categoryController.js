@@ -1,10 +1,19 @@
 const db = require('../config/db');
 
-// Obtener todas las categorías
+// Obtener todas las categorías o por almacen
 exports.getAllCategories = async (req, res) => {
   try {
-    const [categories] = await db.query('CALL sp_get_all_categories()');
-    res.json(categories[0]);
+    const { warehouse_id } = req.query;
+    
+    let result;
+    
+    if (warehouse_id) {
+      [result] = await db.query('CALL sp_get_categories_by_warehouse(?)', [warehouse_id]);
+    } else {
+      [result] = await db.query('CALL sp_get_all_categories()');
+    }
+    
+    res.json(result[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error al obtener categorías' });
@@ -31,13 +40,13 @@ exports.getCategoryById = async (req, res) => {
 // Crear categoría
 exports.createCategory = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, warehouse_id } = req.body;
     
     if (!nombre || nombre.trim() === '') {
       return res.status(400).json({ message: 'El nombre es requerido' });
     }
     
-    const [result] = await db.query('CALL sp_create_category(?)', [nombre]);
+    const [result] = await db.query('CALL sp_create_category(?, ?)', [nombre, warehouse_id || null]);
     
     res.status(201).json({ 
       message: 'Categoría creada exitosamente',
@@ -55,14 +64,14 @@ exports.createCategory = async (req, res) => {
 // Actualizar categoría
 exports.updateCategory = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, warehouse_id } = req.body;
     const { id } = req.params;
     
     if (!nombre || nombre.trim() === '') {
       return res.status(400).json({ message: 'El nombre es requerido' });
     }
     
-    const [result] = await db.query('CALL sp_update_category(?, ?)', [id, nombre]);
+    const [result] = await db.query('CALL sp_update_category(?, ?, ?)', [id, nombre, warehouse_id || null]);
     
     if (result[0][0].affected_rows === 0) {
       return res.status(404).json({ message: 'Categoría no encontrada' });
