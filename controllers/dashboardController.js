@@ -4,12 +4,25 @@ const { generateInventoryPDF, generateMovementsPDF, generateLowStockPDF } = requ
 // Obtener estadísticas del dashboard
 exports.getDashboardStats = async (req, res) => {
   try {
+    const { warehouse_id } = req.query;
+
     const [totalProducts] = await db.query('CALL sp_count_total_products()');
     const [lowStockProducts] = await db.query('CALL sp_count_low_stock_products()');
     const [totalUsers] = await db.query('CALL sp_count_total_users()');
-    const [topExitsMonth] = await db.query('CALL sp_get_top_exits_month()');
-    const [lowExitsMonth] = await db.query('CALL sp_get_low_exits_month()');
-    const [lowStockAlerts] = await db.query('CALL sp_get_low_stock_alerts()');
+
+     let topExitsMonth, lowExitsMonth, lowStockAlerts, excessStockAlerts;
+    
+    if (warehouse_id) {
+      [topExitsMonth] = await db.query('CALL sp_get_top_exits_month_by_warehouse(?)', [warehouse_id]);
+      [lowExitsMonth] = await db.query('CALL sp_get_low_exits_month_by_warehouse(?)', [warehouse_id]);
+      [lowStockAlerts] = await db.query('CALL sp_get_low_stock_alerts_by_warehouse(?)', [warehouse_id]);
+      [excessStockAlerts] = await db.query('CALL sp_get_excess_stock_alerts_by_warehouse(?)', [warehouse_id]);
+    } else {
+      [topExitsMonth] = await db.query('CALL sp_get_top_exits_month()');
+      [lowExitsMonth] = await db.query('CALL sp_get_low_exits_month()');
+      [lowStockAlerts] = await db.query('CALL sp_get_low_stock_alerts()');
+      [excessStockAlerts] = await db.query('CALL sp_get_excess_stock_alerts()');
+    }
     
     res.json({
       totalProducts: totalProducts[0][0].total,
@@ -17,7 +30,8 @@ exports.getDashboardStats = async (req, res) => {
       totalUsers: totalUsers[0][0].total,
       topExitsMonth: topExitsMonth[0],
       lowExitsMonth: lowExitsMonth[0],
-      lowStockAlerts: lowStockAlerts[0]
+      lowStockAlerts: lowStockAlerts[0],
+      excessStockAlerts: excessStockAlerts[0]
     });
   } catch (error) {
     console.error(error);

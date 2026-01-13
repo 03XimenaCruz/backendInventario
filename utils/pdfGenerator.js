@@ -1,19 +1,16 @@
 const PDFDocument = require('pdfkit');
 
-// Función auxiliar para dibujar tabla con bordes
 const drawTableCell = (doc, text, x, y, width, height, align = 'center', isHeader = false) => {
-  // Solo dibujar borde si es header
+
   if (isHeader) {
     doc.rect(x, y, width, height).stroke();
-    // Fondo de color cyan para headers
     doc.save();
-    doc.rect(x, y, width, height).fill('#E5E7EB'); // cyan-100
+    doc.rect(x, y, width, height).fill('#E5E7EB'); 
     doc.restore();
     doc.rect(x, y, width, height).stroke();
-    doc.fillColor('black'); // Texto negro en headers
+    doc.fillColor('black'); 
   }
   
-  // Calcular posición del texto centrado
   const textY = y + (height - 10) / 2;
   
   doc.text(text, x + 2, textY, {
@@ -23,37 +20,32 @@ const drawTableCell = (doc, text, x, y, width, height, align = 'center', isHeade
   });
 };
 
-// Generar PDF de inventario
 const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
-  // Configurar headers para descarga
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${title}.pdf"`);
 
   doc.pipe(res);
 
-  // Título principal
   doc.fontSize(16).font('Helvetica-Bold').text('REPORTE DE INVENTARIO', { align: 'center' });
   doc.moveDown(1.5);
 
-  // Fecha (derecha)
   const fechaTexto = `Fecha: ${new Date().toLocaleDateString('es-MX')}`;
   doc.fontSize(10).font('Helvetica')
      .text(fechaTexto, { align: 'right' });
   
   doc.moveDown(2);
 
-  // Configuración de tabla
   const tableTop = doc.y;
   const rowHeight = 20;
   const columnWidths = [60, 120, 100, 100, 60, 60];
   const tableWidth = columnWidths.reduce((a, b) => a + b, 0);
   const pageWidth = doc.page.width;
-  const startX = (pageWidth - tableWidth) / 2; // Centrar tabla
+  const startX = (pageWidth - tableWidth) / 2;
   const headers = ['SKU', 'Nombre', 'Categoría', 'Almacén', 'Stock', 'Status'];
 
-  // Dibujar headers con fondo cyan
   doc.fontSize(10).font('Helvetica-Bold');
   let xPos = startX;
   headers.forEach((header, i) => {
@@ -61,17 +53,16 @@ const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
     xPos += columnWidths[i];
   });
 
-  // Dibujar datos SIN líneas
   doc.fontSize(9).font('Helvetica');
   let yPos = tableTop + rowHeight;
 
   data.forEach((item, index) => {
-    // Verificar si necesitamos nueva página
+
     if (yPos > 720) {
       doc.addPage();
       yPos = 50;
       
-      // Redibujar headers en nueva página
+  
       doc.fontSize(10).font('Helvetica-Bold');
       xPos = startX;
       headers.forEach((header, i) => {
@@ -92,7 +83,7 @@ const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
       item.status || ''
     ];
 
-    // Dibujar celdas SIN bordes
+    
     values.forEach((value, i) => {
       const textY = yPos + (rowHeight - 10) / 2;
       doc.text(value, xPos + 2, textY, {
@@ -106,7 +97,7 @@ const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
     yPos += rowHeight;
   });
 
-  // Total de productos (alineado a la derecha)
+  
   doc.moveDown(1);
   const totalY = yPos + 15;
   doc.fontSize(11).font('Helvetica-Bold')
@@ -118,7 +109,6 @@ const generateInventoryPDF = (data, res, title = 'Reporte de Inventario') => {
   doc.end();
 };
 
-// Generar PDF de movimientos
 const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
 
@@ -127,18 +117,17 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
 
   doc.pipe(res);
 
-  // Título principal
+
   doc.fontSize(16).font('Helvetica-Bold').text('REPORTE DE MOVIMIENTOS', { align: 'center' });
   doc.moveDown(1.5);
 
-  // Fecha (derecha)
+ 
   const fechaTexto = `Fecha: ${new Date().toLocaleDateString('es-MX')}`;
   doc.fontSize(10).font('Helvetica')
      .text(fechaTexto, { align: 'right' });
   
   doc.moveDown(2);
 
-  // Configuración de tabla
   const tableTop = doc.y;
   const rowHeight = 20;
   const columnWidths = [35, 60, 110, 80, 50, 55, 55, 95, 85];
@@ -147,7 +136,7 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
   const startX = (pageWidth - tableWidth) / 2;
   const headers = ['ID', 'Tipo', 'Producto', 'Almacén', 'Cant.', 'St.Ant.', 'St.Act.', 'Usuario', 'Fecha'];
 
-  // Headers con fondo cyan
+  
   doc.fontSize(9).font('Helvetica-Bold');
   let xPos = startX;
   headers.forEach((header, i) => {
@@ -155,7 +144,7 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
     xPos += columnWidths[i];
   });
 
-  // Datos SIN líneas
+  
   doc.fontSize(8).font('Helvetica');
   let yPos = tableTop + rowHeight;
 
@@ -164,7 +153,7 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
       doc.addPage();
       yPos = 50;
       
-      // Redibujar headers
+      
       doc.fontSize(9).font('Helvetica-Bold');
       xPos = startX;
       headers.forEach((header, i) => {
@@ -192,7 +181,7 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
     values.forEach((value, i) => {
       const textY = yPos + (rowHeight - 10) / 2;
       
-      // Color para tipo de movimiento
+     
       if (i === 1) {
         doc.fillColor(item.tipo_movimiento === 'entrada' ? 'green' : 'red');
       }
@@ -213,7 +202,7 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
     yPos += rowHeight;
   });
 
-  // Total
+
   doc.fontSize(10).font('Helvetica-Bold')
      .text(`Total de movimientos: ${data.length}`, startX, yPos + 15, { 
        align: 'right', 
@@ -223,7 +212,6 @@ const generateMovementsPDF = (data, res, title = 'Reporte de Movimientos') => {
   doc.end();
 };
 
-// Generar PDF de stock bajo
 const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
   const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
@@ -232,19 +220,19 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
 
   doc.pipe(res);
 
-  // Título principal en rojo
+  
   doc.fontSize(16).font('Helvetica-Bold').fillColor('red').text('REPORTE DE STOCK BAJO', { align: 'center' });
   doc.fillColor('black');
   doc.moveDown(1.5);
 
-  // Fecha (derecha)
+ 
   const fechaTexto = `Fecha: ${new Date().toLocaleDateString('es-MX')}`;
   doc.fontSize(10).font('Helvetica')
      .text(fechaTexto, { align: 'right' });
   
   doc.moveDown(2);
 
-  // Configuración de tabla
+ 
   const tableTop = doc.y;
   const rowHeight = 20;
   const columnWidths = [60, 140, 100, 100, 50, 50];
@@ -253,7 +241,7 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
   const startX = (pageWidth - tableWidth) / 2;
   const headers = ['SKU', 'Nombre', 'Categoría', 'Almacén', 'Stock', 'Mín'];
 
-  // Headers con fondo cyan
+  
   doc.fontSize(10).font('Helvetica-Bold');
   let xPos = startX;
   headers.forEach((header, i) => {
@@ -261,7 +249,7 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
     xPos += columnWidths[i];
   });
 
-  // Datos SIN líneas
+  
   doc.fontSize(9).font('Helvetica');
   let yPos = tableTop + rowHeight;
 
@@ -270,7 +258,7 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
       doc.addPage();
       yPos = 50;
       
-      // Redibujar headers
+     
       doc.fontSize(10).font('Helvetica-Bold');
       xPos = startX;
       headers.forEach((header, i) => {
@@ -294,7 +282,7 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
     values.forEach((value, i) => {
       const textY = yPos + (rowHeight - 10) / 2;
       
-      // Resaltar stock en rojo si es crítico
+     
       if (i === 4 && parseInt(item.stock) === 0) {
         doc.fillColor('red').font('Helvetica-Bold');
       } else if (i === 4 && parseInt(item.stock) <= parseInt(item.stock_minimo)) {
@@ -317,7 +305,7 @@ const generateLowStockPDF = (data, res, title = 'Reporte de Stock Bajo') => {
     yPos += rowHeight;
   });
 
-  // Total
+  
   doc.fillColor('black').font('Helvetica-Bold').fontSize(11)
      .text(`Total de productos con stock bajo: ${data.length}`, startX, yPos + 15, { 
        align: 'right', 

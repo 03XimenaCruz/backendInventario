@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 
-// Verificar token
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
 
@@ -17,7 +16,6 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Verificar si es administrador
 const isAdmin = (req, res, next) => {
   if (req.user.rol !== 'administrador') {
     return res.status(403).json({ message: 'Acceso denegado. Solo administradores' });

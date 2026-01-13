@@ -99,6 +99,11 @@ exports.deleteCategory = async (req, res) => {
     res.json({ message: 'Categoría eliminada exitosamente' });
   } catch (error) {
     console.error(error);
+    if (error.sqlState === '45000') {
+      return res.status(400).json({ 
+        message: error.sqlMessage || 'No se puede eliminar la categoría porque tiene productos asociados'
+      });
+    }
     res.status(500).json({ message: 'Error al eliminar categoría' });
   }
 };

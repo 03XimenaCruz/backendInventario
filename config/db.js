@@ -10,15 +10,13 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Usar promesas en lugar de callbacks
 const promisePool = pool.promise();
 
-// Probar conexión
 pool.getConnection((err, connection) => {
   if (err) {
-    console.error('❌ Error conectando a la base de datos:', err.message);
+    console.error('Error conectando a la base de datos:', err.message);
   } else {
-    console.log('✅ Conectado a MySQL exitosamente');
+    console.log('Conectado a la base de datos exitosamente');
     connection.release();
   }
 });
