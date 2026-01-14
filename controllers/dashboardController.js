@@ -5,12 +5,23 @@ const { generateInventoryPDF, generateMovementsPDF, generateLowStockPDF } = requ
 exports.getDashboardStats = async (req, res) => {
   try {
     const { warehouse_id } = req.query;
-
-    const [totalProducts] = await db.query('CALL sp_count_total_products()');
-    const [lowStockProducts] = await db.query('CALL sp_count_low_stock_products()');
+    
+    // ⭐ Stats generales con filtro de almacén
+    let totalProducts, lowStockProducts;
+    
+    if (warehouse_id) {
+      [totalProducts] = await db.query('CALL sp_count_total_products_by_warehouse(?)', [warehouse_id]);
+      [lowStockProducts] = await db.query('CALL sp_count_low_stock_products_by_warehouse(?)', [warehouse_id]);
+    } else {
+      [totalProducts] = await db.query('CALL sp_count_total_products()');
+      [lowStockProducts] = await db.query('CALL sp_count_low_stock_products()');
+    }
+    
+    // Total de usuarios (siempre global, no cambia por almacén)
     const [totalUsers] = await db.query('CALL sp_count_total_users()');
-
-     let topExitsMonth, lowExitsMonth, lowStockAlerts, excessStockAlerts;
+    
+    // ⭐ Gráficas y alertas con filtro
+    let topExitsMonth, lowExitsMonth, lowStockAlerts, excessStockAlerts;
     
     if (warehouse_id) {
       [topExitsMonth] = await db.query('CALL sp_get_top_exits_month_by_warehouse(?)', [warehouse_id]);
